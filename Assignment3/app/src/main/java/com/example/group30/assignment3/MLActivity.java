@@ -19,9 +19,10 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.gson.Gson;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,10 +33,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-import au.com.bytecode.opencsv.CSVWriter;
-import libsvm.svm_parameter;
-import libsvm.svm_problem;
 import umich.cse.yctung.androidlibsvm.LibSVM;
+
 
 
 /**
@@ -114,32 +113,40 @@ public class MLActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-                float[][] dataArray = new float[3][50];
-                int j = 0;
+                String storage_folder = "/Android/Data/CSE535_ASSIGNMENT3";
+                SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(Environment.getExternalStorageDirectory().getPath()
+                        + storage_folder + "/Group30.db", null);
+                rowData = db.rawQuery("SELECT * FROM Test", null);
+                final float[][][] dataArray = new float[rowData.getCount()][3][50];
+                int column = 0;
+                int row = 0;
                 while (rowData.moveToNext()) {
-                    j=0;
-                    for (int i = 1; i <= 50; i++) {
-                        dataArray[0][j] = rowData.getFloat(i);
-                        dataArray[1][j] = rowData.getFloat(i+1);
-                        dataArray[2][j] = rowData.getFloat(i+2);
-                        Log.d("array",dataArray[0][j]+" "+dataArray[1][j]+" "+ dataArray[2][j]);
-                        j++;
+                    column=0;
+                    for (int i = 1; i <= 150; i+=3) {
+                        dataArray[row][0][column] = rowData.getFloat(i);
+                        dataArray[row][1][column] = rowData.getFloat(i+1);
+                        dataArray[row][2][column] = rowData.getFloat(i+2);
+                        Log.d("array","row "+ row +" "+dataArray[row][0][column]+" "+dataArray[row][1][column]+" "+ dataArray[row][2][column]);
+                        column++;
                     }
+                    row++;
 
                 }
-
-                Log.d("array", dataArray[0][0]+" "+dataArray[0][1]);
+                Log.d("array", dataArray[rowData.getCount()-1][0][49]+" "+dataArray[rowData.getCount()-1][1][49]);
 
                 graphPlot.setWebViewClient(new WebViewClient() {
                     public void onPageFinished(WebView view, String url) {
                         Log.d("in js", "hello");
                         JSONObject jsonObj = null;
+                        Gson gson = new Gson();
+                        String json = gson.toJson(dataArray);
+
                         try {
                             jsonObj = new JSONObject("{\"phonetype\":\"N95\",\"cat\":\"WP\"}");
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
-                        graphPlot.evaluateJavascript("plotgraph(" + jsonObj.toString() + ")", null);
+                        graphPlot.evaluateJavascript("plotgraph(" + json + ")", null);
                     }
                 });
                 graphPlot.loadUrl("file:///android_asset/www/plotlyEX.html");
@@ -263,7 +270,7 @@ public class MLActivity extends AppCompatActivity {
                 cursor.moveToFirst();
                 int rows = cursor.getInt(0);
                 writer = new FileWriter(csvFile);
-                rowData = db.rawQuery("SELECT * FROM Test", null);
+
                 for (int i = 0; i < rows; i++) {
                     StringBuilder row;
                     int temp = i + 1;
